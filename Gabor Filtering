@@ -1,0 +1,92 @@
+#importing required libraries
+import cv2 as cv
+import numpy as np
+import pandas as pd
+
+def normalize_image(image):
+    min_val = np.min(image)
+    max_val = np.max(image)
+    normalized_image = (image - min_val) / (max_val - min_val)
+    return normalized_image
+
+def standardize_image(normalized_image):
+    mean_val = np.mean(normalized_image)
+    std_val = np.std(normalized_image)
+    standardized_image = (normalized_image - mean_val) 
+    return standardized_image
+#Intializing Gabor filters parameters
+def build_filters():
+    num_filters = 8
+    filters = [] 
+    thetas = []
+    ksize = 15
+    for theta in np.arange(0, np.pi, np.pi / num_filters):
+        kern = cv.getGaborKernel((ksize, ksize), 4.0, theta, 8.0, 0.5, 0, ktype=cv.CV_32F)
+        kern /= 1.5 * kern.sum()
+        filters.append(kern)
+        thetas.append(theta)
+    return filters, thetas
+
+def process(image, filters):
+    filter_responses = []
+    standardized_responses = []
+    energies = []
+    s_energies = []
+    for kern in filters:
+        fimg = cv.filter2D(image, cv.CV_8UC3, kern)
+        filter_responses.append(fimg)
+        
+        normalized_fimg = normalize_image(fimg)
+        standardized_fimg = standardize_image(normalized_fimg)
+        standardized_responses.append(standardized_fimg)
+        
+        m, n = image.shape
+        energy = np.sum(fimg**2) / (m * n)
+        s_m, s_n = standardized_fimg.shape
+        s_energy = np.sum(standardized_fimg**2) / (s_m * s_n)
+        
+        energies.append(energy)
+        s_energies.append(s_energy)
+        
+    return filter_responses, energies, standardized_responses, s_energies
+
+# Reading the input image
+image = cv.imread('NakedTop.jpg', cv.IMREAD_GRAYSCALE)
+
+# Building filters
+filters, thetas = build_filters()
+
+# Processing the image with filters
+filter_responses, energies, standardized_responses, s_energies = process(image, filters)
+
+# Calculating the median and average of energies
+median_energy = np.median(energies)
+average_energy = np.mean(energies)
+
+# Calculating  median and average of standardized energies
+s_median_energy = np.median(s_energies)
+s_average_energy = np.mean(s_energies)
+
+print(f'Median of energies: {median_energy}')
+print(f'Average of energies: {average_energy}')
+print(f'Median of Standardized energies: {s_median_energy}')
+print(f'Average of standardized energies: {s_average_energy}')
+
+# Saving energies and standardized energies to Excel
+energies_df = pd.DataFrame(energies, columns=['Energy'])
+energies_df.to_excel('l8/filter_energies1.xlsx', index=False)
+
+thetas_df = pd.DataFrame(thetas, columns=['Theta'])
+thetas_df.to_excel('l8/thetas1.xlsx', index=False)
+
+s_energies_df = pd.DataFrame(s_energies, columns=['S_Energy'])
+s_energies_df.to_excel('l8/s_energies.xlsx', index=False)
+
+# Displaying and saving filter responses
+for i, response in enumerate(filter_responses):
+    newimage = cv.normalize(response, None, 0, 255, cv.NORM_MINMAX)
+    newimage = newimage.astype(np.uint8)
+    cv.imwrite(f'l8/k15_l8_image5_g_f{i+1}.jpg', newimage)
+
+cv.waitKey(0)
+cv.destroyAllWindows()
