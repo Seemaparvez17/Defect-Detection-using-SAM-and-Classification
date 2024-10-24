@@ -1,0 +1,24 @@
+#importing required libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2 as cv
+import math
+
+#importing ground truth and segmentation map images
+gt_new=cv.imread('NakedTop.jpg')
+seg_map_new=cv.imread('seg_map.jpg')
+
+# to make sure both the ground truth and segmentation map are of same size
+gt_new.shape
+seg_map_new.shape
+
+#IOU Calculation
+#intersection
+img_bwa=cv.bitwise_and(gt_new,seg_map_new)
+#union
+img_bwo=cv.bitwise_or(gt_new,seg_map_new)
+
+#iou calculation
+iou=np.sum(img_bwa)/np.sum(img_bwo)
+#iou calculation
+iou
