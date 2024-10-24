@@ -1,0 +1,129 @@
+import os
+HOME = os.getcwd()
+print("HOME:", HOME)
+
+#installing Segment Anything
+!pip install -q 'git+https://github.com/facebookresearch/segment-anything.git'
+
+!pip install -q jupyter_bbox_widget roboflow dataclasses-json supervision
+
+import os
+
+CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
+print(CHECKPOINT_PATH, "; exist:",os.path.isfile(CHECKPOINT_PATH))
+
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+
+sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH).to(device=DEVICE)
+
+mask_generator = SamAutomaticMaskGenerator(sam)
+
+mask_generator = SamAutomaticMaskGenerator(sam)
+
+#importing the gaor filter response
+import os
+
+IMAGE_NAME = "/content/7/k17_s12_l9_g_f1.jpg"
+IMAGE_PATH = os.path.join(HOME, "data", IMAGE_NAME)
+
+import cv2
+import supervision as sv
+
+image_bgr = cv2.imread(IMAGE_PATH)
+image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+
+sam_result = mask_generator.generate(image_rgb)
+
+print(sam_result[0].keys())
+mask_annotator = sv.MaskAnnotator(color_lookup=sv.ColorLookup.INDEX)
+
+detections = sv.Detections.from_sam(sam_result=sam_result)
+
+annotated_image = mask_annotator.annotate(scene=image_bgr.copy(), detections=detections)
+
+sv.plot_images_grid(
+    images=[image_bgr, annotated_image],
+    grid_size=(1, 2),
+    titles=['source image', 'segmented image']
+)
+
+
+masks = [
+    mask['segmentation']
+    for mask
+    in sorted(sam_result, key=lambda x: x['area'], reverse=True)
+]
+# Directory to save the masks
+save_directory = '/content/7/'
+os.makedirs(save_directory, exist_ok=True)
+
+# Iterating through the masks and to save each one
+for i, mask in enumerate(masks):
+    # Converting the mask to an appropriate format for saving
+    mask_to_save = (mask * 255).astype(np.uint8)
+
+    # Defining the path for each mask
+    mask_path = os.path.join(save_directory, f'mask_{i+1:03d}.jpg')
+
+    # Saving the mask
+    cv2.imwrite(mask_path, mask_to_save)
+
+# Ploting the masks in a grid
+sv.plot_images_grid(
+    images=masks,
+    grid_size=(50, int(len(masks) / 30)),
+    size=(50, 50)
+)
+
+import cv2
+import os
+import numpy as np
+
+
+masks = [
+    mask['segmentation']
+    for mask
+    in sorted(sam_result, key=lambda x: x['area'], reverse=True)
+]
+# Directory to save the masks
+save_directory = '/content/7/'
+os.makedirs(save_directory, exist_ok=True)
+
+# Combining the individual masks
+combined_mask = np.zeros_like(masks[0], dtype=np.uint8)
+
+
+
+
+for i in range(2, 35):  # Indices for mask_009 to mask_038
+    # Ensure the mask is binary (0 or 1)
+    mask_binary = (masks[i] > 0).astype(np.uint8)
+
+    # Combining the masks using bitwise OR operation
+    combined_mask = cv2.bitwise_or(combined_mask, mask_binary)
+
+# Inverting the combined mask
+combined_mask_inverted = cv2.bitwise_not(combined_mask * 255)
+
+# Saving the combined and inverted mask
+combined_mask_path = os.path.join(save_directory, 'k17_s12_l9_mask.jpg')
+cv2.imwrite(combined_mask_path, combined_mask_inverted)
+
+
+for i, mask in enumerate(masks):
+    # Inverting colors: white (255) to black (0) and black (0) to white (255)
+    inverted_mask = cv2.bitwise_not((mask * 255).astype(np.uint8))
+
+    # Saving the mask
+    mask_path = os.path.join(save_directory, f'mask_{i+1:03d}.jpg')
+    cv2.imwrite(mask_path, inverted_mask)
+
+# Ploting the masks in a grid
+sv.plot_images_grid(
+    images=masks,
+    grid_size=(50, int(len(masks) / 30)),
+    size=(50, 50)
+)
+
+
+
